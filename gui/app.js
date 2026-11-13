@@ -42,7 +42,10 @@
   // rest of the session, reload the page once and let it open a fresh one.
   let reconnecting = false;
   function isSessionExpired(message) {
-    return /session expired|会话已过期|session/i.test(String(message || ""));
+    // Only the page capability's own message leads to a reload: a reload
+    // drops what the user typed but has not submitted, so a looser match
+    // (any message mentioning a session) would lose it.
+    return /session expired|会话已过期/i.test(String(message || ""));
   }
   function reconnectOnce() {
     if (reconnecting) return;
@@ -710,7 +713,9 @@
     } catch (err) {
       $("poolList").replaceChildren(el("p", "muted", "无法读取号池：" + err.message));
     }
-  }  async function loadStats() {
+  }
+
+  async function loadStats() {
     try {
       const data = await api("stats");
       renderStatsView(data);
