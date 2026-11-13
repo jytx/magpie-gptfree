@@ -489,3 +489,45 @@ test("GUI exposes 额度统计 tab, per-account image quota pills, GET /api/stat
     await h.close();
   }
 });
+
+test("GUI keeps a page usable across a plugin-host restart (persisted capability)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "gptfree-session-"));
+  const sessionFile = join(dir, "gui-sessions.json");
+  const first = createGuiService({ port: 0, sessionFile, poolRead: async () => [] });
+  const addr = await first.listen();
+  const base = "http://127.0.0.1:" + addr.port + "/";
+  let token;
+  try {
+    const html = await (await fetch(base + "ui")).text();
+    token = html.match(/meta name="gptfree-session" content="([0-9a-f]{64})"/)?.[1];
+    assert(token, "the page gets its capability");
+    // The capability is written for the next host process.
+    await new Promise((r) => setTimeout(r, 60));
+    const stored = JSON.parse(await readFile(sessionFile, "utf8"));
+    assert.equal(stored.sessions.length, 1);
+    assert.equal(stored.sessions[0].id, token);
+    assert(!JSON.stringify(stored).includes("@"), "no account data in the session file");
+  } finally {
+    await first.close();
+  }
+
+  // A restarted host (new process, new service) still accepts the open page.
+  const second = createGuiService({ port: 0, sessionFile, poolRead: async () => [] });
+  const addr2 = await second.listen();
+  const base2 = "http://127.0.0.1:" + addr2.port + "/";
+  try {
+    const resumed = await fetch(base2 + "api/accounts", {
+      headers: { Origin: "null", "X-GPTFree-Session": token },
+    });
+    assert.equal(resumed.status, 200, "an open page survives a host restart");
+    // A capability never issued by this plugin is still refused.
+    const forged = await fetch(base2 + "api/accounts", {
+      headers: { Origin: "null", "X-GPTFree-Session": "0".repeat(64) },
+    });
+    assert.equal(forged.status, 403);
+  } finally {
+    await second.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
