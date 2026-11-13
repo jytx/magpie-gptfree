@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { request as httpRequest } from "node:http";
 import { createGuiService } from "../lib/gui-service.mjs";
-import { GPTFreePoolPlugin } from "../index.mjs";
+import { GPTFreePoolPlugin, GPTFreeGuiPlugin } from "../index.mjs";
 import { nativeImportMethod } from "../lib/provider-native-signin.mjs";
 import { pickAccountTxt, NATIVE_PICKER_COMMANDS } from "../lib/native-file-dialog.mjs";
 import {
@@ -296,4 +296,36 @@ test("the only import web UI is Magpie's sandboxed page; old browser tickets are
     });
     assert.equal(hostStatus, 403);
   } finally { await h.close(); }
+});
+
+test("a GUI port already in use does not fail the plugin load", async () => {
+  // A host restart overlaps the previous host for a moment, and the old
+  // one still holds the GUI port. The pool's provider side needs no GUI
+  // service, so the plugin must load anyway: failing here took the whole
+  // plugin down and left the provider with no endpoint at all.
+  const busy = createGuiService({ port: 0 });
+  const address = await busy.listen();
+  const home = await mkdtemp(join(tmpdir(), "magpie-gui-busy-"));
+  const before = process.env.MAGPIE_GPTFREE_HOME;
+  process.env.MAGPIE_GPTFREE_HOME = home;
+  const logs = [];
+  const client = {
+    auth: {
+      async set() { return { data: true }; },
+      async remove() { return { data: true }; },
+    },
+    app: {
+      async log({ body }) { logs.push(body); },
+    },
+  };
+  try {
+    const loaded = await GPTFreeGuiPlugin({ client }, { port: address.port });
+    assert.deepEqual(loaded, {});
+    assert(logs.some((l) => l.level === "warn" && /GUI service could not start/.test(l.message)));
+  } finally {
+    if (before === undefined) delete process.env.MAGPIE_GPTFREE_HOME;
+    else process.env.MAGPIE_GPTFREE_HOME = before;
+    await busy.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
