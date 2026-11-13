@@ -710,7 +710,8 @@
     } catch (err) {
       $("poolList").replaceChildren(el("p", "muted", "无法读取号池：" + err.message));
     }
-  }  async function loadStats() {
+  }
+  async function loadStats() {
     try {
       const data = await api("stats");
       renderStatsView(data);
