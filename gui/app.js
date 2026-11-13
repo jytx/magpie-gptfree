@@ -36,6 +36,20 @@
   let preview = null, previewSource = "", lastSeq = 0, polling = null, busy = false, poolBusy = false, checkingDraft = false, activeTab = "import";
   const jobStates = new Map();
   const rowMessages = new Map();
+  // Magpie restarts its plugin host about once an hour (community plugin
+  // auto-update). The page outlives that restart, so a request can be refused
+  // with an expired page capability. Instead of leaving an error banner for the
+  // rest of the session, reload the page once and let it open a fresh one.
+  let reconnecting = false;
+  function isSessionExpired(message) {
+    return /session expired|会话已过期|session/i.test(String(message || ""));
+  }
+  function reconnectOnce() {
+    if (reconnecting) return;
+    reconnecting = true;
+    notice("插件服务刚刚重启，正在自动重新连接…");
+    setTimeout(() => location.reload(), 350);
+  }
 
   function el(tag, className, content) {
     const n = document.createElement(tag);
@@ -78,7 +92,12 @@
     let json;
     try { json = await response.json(); }
     catch { throw new Error("本地服务返回无效响应"); }
-    if (!response.ok) throw new Error(json.error || "操作失败");
+    if (!response.ok) {
+      const error = new Error(json.error || "操作失败");
+      error.status = response.status;
+      if (response.status === 403 && isSessionExpired(json.error)) reconnectOnce();
+      throw error;
+    }
     return json;
   }
   function hasDraftChanges() {
@@ -691,8 +710,7 @@
     } catch (err) {
       $("poolList").replaceChildren(el("p", "muted", "无法读取号池：" + err.message));
     }
-  }
-  async function loadStats() {
+  }  async function loadStats() {
     try {
       const data = await api("stats");
       renderStatsView(data);
