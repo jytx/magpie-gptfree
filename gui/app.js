@@ -888,13 +888,31 @@
   // 大图预览：底部缩略图条、左右循环切换、缩放与拖动
   const LIGHTBOX_MIN_ZOOM = 0.5;
   const LIGHTBOX_MAX_ZOOM = 6;
+  const LIGHTBOX_MAX_DRAG = 4000;
   let lightbox = null;
-  const lightboxState = { items: [], index: 0, zoom: 1, x: 0, y: 0, dragging: false, lastX: 0, lastY: 0 };
+  const lightboxState = {
+    items: [], index: 0, zoom: 1, x: 0, y: 0,
+    dragging: false, lastX: 0, lastY: 0,
+    frame: 0,
+  };
 
+  /**
+   * 把缩放与位移写上去。一帧只写一次（滚轮与拖动的连续事件合并），
+   * 写的是 translate3d + scale，落在 GPU 合成层上，不引起重绘。
+   */
+  function lightboxPaint() {
+    if (lightboxState.frame) return;
+    lightboxState.frame = requestAnimationFrame(() => {
+      lightboxState.frame = 0;
+      const img = lightbox?.querySelector(".lightbox-image");
+      if (!img) return;
+      img.style.transform = `translate3d(${lightboxState.x}px, ${lightboxState.y}px, 0) scale(${lightboxState.zoom})`;
+    });
+  }
   function lightboxApply() {
     const img = lightbox.querySelector(".lightbox-image");
     if (!img) return;
-    img.style.transform = `translate(${lightboxState.x}px, ${lightboxState.y}px) scale(${lightboxState.zoom})`;
+    img.style.transform = `translate3d(${lightboxState.x}px, ${lightboxState.y}px, 0) scale(${lightboxState.zoom})`;
     const thumbs = lightbox.querySelectorAll(".lightbox-thumb");
     thumbs.forEach((thumb, i) => thumb.classList.toggle("active", i === lightboxState.index));
     const active = lightbox.querySelector(".lightbox-thumb.active");
@@ -909,8 +927,12 @@
     lightboxState.y = 0;
     const item = items[lightboxState.index];
     const img = lightbox.querySelector(".lightbox-image");
-    img.src = item.src;
-    img.alt = item.alt || "";
+    // 换图时不留空白：新的图解码好了再换上，旧的先顶着
+    const next = new Image();
+    next.src = item.src;
+    const swap = () => { img.src = item.src; img.alt = item.alt || ""; };
+    if (next.decode) next.decode().then(swap).catch(swap);
+    else swap();
     lightbox.querySelector(".lightbox-counter").textContent = `${lightboxState.index + 1} / ${items.length}`;
     lightboxApply();
   }
@@ -919,7 +941,7 @@
     if (next === lightboxState.zoom) return;
     lightboxState.zoom = next;
     if (next <= 1) { lightboxState.x = 0; lightboxState.y = 0; }
-    lightboxApply();
+    lightboxPaint();
   }
   function buildLightbox() {
     if (lightbox) return lightbox;
@@ -962,18 +984,20 @@
     });
     img.addEventListener("pointermove", (ev) => {
       if (!lightboxState.dragging) return;
-      lightboxState.x += ev.clientX - lightboxState.lastX;
-      lightboxState.y += ev.clientY - lightboxState.lastY;
+      lightboxState.x = Math.max(-LIGHTBOX_MAX_DRAG,
+        Math.min(LIGHTBOX_MAX_DRAG, lightboxState.x + ev.clientX - lightboxState.lastX));
+      lightboxState.y = Math.max(-LIGHTBOX_MAX_DRAG,
+        Math.min(LIGHTBOX_MAX_DRAG, lightboxState.y + ev.clientY - lightboxState.lastY));
       lightboxState.lastX = ev.clientX;
       lightboxState.lastY = ev.clientY;
-      lightboxApply();
+      lightboxPaint();
     });
     img.addEventListener("pointerup", () => { lightboxState.dragging = false; });
     img.addEventListener("pointercancel", () => { lightboxState.dragging = false; });
-    // 滚轮缩放
+    // 滚轮缩放：倍率跟着滚动的量连续变化，不是一格一格跳
     lightbox.addEventListener("wheel", (ev) => {
       ev.preventDefault();
-      lightboxZoom(ev.deltaY < 0 ? 1.15 : 1 / 1.15);
+      lightboxZoom(Math.pow(1.0016, -ev.deltaY));
     }, { passive: false });
     // 只有点在图片与按钮之外才关掉，点图片不关
     lightbox.addEventListener("click", (ev) => {

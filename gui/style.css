@@ -186,9 +186,12 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .history-result { position: relative; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); cursor: zoom-in; aspect-ratio: 1 / 1 }
 .history-thumb img, .history-result img { display: block; width: 100%; height: 100%; object-fit: cover }
 .history-thumb-label { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; line-height: 1.5; color: #fff; background: rgba(8, 14, 24, .55); text-align: center }
-.lightbox { position: fixed; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px 24px 26px; background: rgba(8, 14, 24, .88); cursor: zoom-out }
+/* 预览窗的底是不透明的：底下不参与合成，缩放拖动才不掉帧 */
+.lightbox { position: fixed; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px 24px 26px; background: #0a1018; cursor: zoom-out }
 .lightbox.open { display: flex }
-.lightbox-image { max-width: 96vw; max-height: 74vh; object-fit: contain; border-radius: 10px; box-shadow: var(--shadow); transform-origin: center center; transition: transform .12s ease; user-select: none; -webkit-user-drag: none; cursor: grab }
+/* 缩放与拖动都走 transform：合成层上做，不引起重绘；
+   不给 transition —— 每次滚轮都重启过渡会拖出粘滞的尾巴 */
+.lightbox-image { max-width: 96vw; max-height: 74vh; object-fit: contain; border-radius: 10px; box-shadow: var(--shadow); transform-origin: center center; will-change: transform; backface-visibility: hidden; user-select: none; -webkit-user-drag: none; cursor: grab }
 .lightbox-image:active { cursor: grabbing }
 .lightbox-bar { display: flex; align-items: center; gap: 10px; margin-top: 14px; max-width: 94vw }
 .lightbox-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px; max-width: 66vw }
