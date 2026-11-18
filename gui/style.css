@@ -186,9 +186,18 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .history-result { position: relative; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); cursor: zoom-in; aspect-ratio: 1 / 1 }
 .history-thumb img, .history-result img { display: block; width: 100%; height: 100%; object-fit: cover }
 .history-thumb-label { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; line-height: 1.5; color: #fff; background: rgba(8, 14, 24, .55); text-align: center }
-.lightbox { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(8, 14, 24, .84); cursor: zoom-out }
+.lightbox { position: fixed; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px 24px 26px; background: rgba(8, 14, 24, .88); cursor: zoom-out }
 .lightbox.open { display: flex }
-.lightbox-image { max-width: 96vw; max-height: 92vh; object-fit: contain; border-radius: 10px; box-shadow: var(--shadow) }
+.lightbox-image { max-width: 96vw; max-height: 74vh; object-fit: contain; border-radius: 10px; box-shadow: var(--shadow); transform-origin: center center; transition: transform .12s ease; user-select: none; -webkit-user-drag: none; cursor: grab }
+.lightbox-image:active { cursor: grabbing }
+.lightbox-bar { display: flex; align-items: center; gap: 10px; margin-top: 14px; max-width: 94vw }
+.lightbox-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px; max-width: 66vw }
+.lightbox-thumb { width: 56px; height: 56px; flex: 0 0 auto; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: transparent; cursor: pointer }
+.lightbox-thumb img { display: block; width: 100%; height: 100%; object-fit: cover }
+.lightbox-thumb.active { border-color: var(--accent) }
+.lightbox-counter { min-width: 48px; text-align: center; font-size: 12px; color: rgba(255, 255, 255, .78); font-variant-numeric: tabular-nums }
+.lightbox-nav { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .25); background: rgba(255, 255, 255, .08); color: #fff; font-size: 15px; line-height: 1; cursor: pointer }
+.lightbox-nav:hover { background: rgba(255, 255, 255, .2) }
 .pill.edit { background: var(--warn-bg); color: var(--warn) }
 .header-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(12, 20, 34, .42); z-index: 40; border: 0; padding: 0 }

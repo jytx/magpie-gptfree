@@ -885,20 +885,121 @@
       list.append(item);
     }
   }
-  // 大图预览：点缩略图或结果图都能弹出来看
+  // 大图预览：底部缩略图条、左右循环切换、缩放与拖动
+  const LIGHTBOX_MIN_ZOOM = 0.5;
+  const LIGHTBOX_MAX_ZOOM = 6;
   let lightbox = null;
-  function showLightbox(src, alt) {
-    if (!lightbox) {
-      lightbox = el("div", "lightbox");
-      lightbox.addEventListener("click", () => lightbox.classList.remove("open"));
-      document.body.append(lightbox);
-    }
-    lightbox.replaceChildren();
+  const lightboxState = { items: [], index: 0, zoom: 1, x: 0, y: 0, dragging: false, lastX: 0, lastY: 0 };
+
+  function lightboxApply() {
+    const img = lightbox.querySelector(".lightbox-image");
+    if (!img) return;
+    img.style.transform = `translate(${lightboxState.x}px, ${lightboxState.y}px) scale(${lightboxState.zoom})`;
+    const thumbs = lightbox.querySelectorAll(".lightbox-thumb");
+    thumbs.forEach((thumb, i) => thumb.classList.toggle("active", i === lightboxState.index));
+    const active = lightbox.querySelector(".lightbox-thumb.active");
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+  function lightboxShow(index) {
+    const items = lightboxState.items;
+    if (!items.length) return;
+    lightboxState.index = (index + items.length) % items.length;
+    lightboxState.zoom = 1;
+    lightboxState.x = 0;
+    lightboxState.y = 0;
+    const item = items[lightboxState.index];
+    const img = lightbox.querySelector(".lightbox-image");
+    img.src = item.src;
+    img.alt = item.alt || "";
+    lightbox.querySelector(".lightbox-counter").textContent = `${lightboxState.index + 1} / ${items.length}`;
+    lightboxApply();
+  }
+  function lightboxZoom(factor) {
+    const next = Math.min(LIGHTBOX_MAX_ZOOM, Math.max(LIGHTBOX_MIN_ZOOM, lightboxState.zoom * factor));
+    if (next === lightboxState.zoom) return;
+    lightboxState.zoom = next;
+    if (next <= 1) { lightboxState.x = 0; lightboxState.y = 0; }
+    lightboxApply();
+  }
+  function buildLightbox() {
+    if (lightbox) return lightbox;
+    lightbox = el("div", "lightbox");
     const img = el("img", "lightbox-image");
-    img.src = src;
-    img.alt = alt || "";
-    lightbox.append(img);
+    img.draggable = false;
+    const bar = el("div", "lightbox-bar");
+    const prev = el("button", "lightbox-nav", "‹");
+    prev.type = "button";
+    prev.title = "上一张（←）";
+    const next = el("button", "lightbox-nav", "›");
+    next.type = "button";
+    next.title = "下一张（→）";
+    const thumbs = el("div", "lightbox-thumbs");
+    const counter = el("span", "lightbox-counter", "");
+    const zoomOut = el("button", "lightbox-nav", "−");
+    zoomOut.type = "button";
+    zoomOut.title = "缩小";
+    const zoomIn = el("button", "lightbox-nav", "＋");
+    zoomIn.type = "button";
+    zoomIn.title = "放大";
+    bar.append(prev, thumbs, next, counter, zoomOut, zoomIn);
+    lightbox.append(img, bar);
+
+    prev.addEventListener("click", (ev) => { ev.stopPropagation(); lightboxShow(lightboxState.index - 1); });
+    next.addEventListener("click", (ev) => { ev.stopPropagation(); lightboxShow(lightboxState.index + 1); });
+    zoomOut.addEventListener("click", (ev) => { ev.stopPropagation(); lightboxZoom(1 / 1.25); });
+    zoomIn.addEventListener("click", (ev) => { ev.stopPropagation(); lightboxZoom(1.25); });
+    img.addEventListener("dblclick", (ev) => {
+      ev.stopPropagation();
+      lightboxState.zoom = lightboxState.zoom > 1 ? 1 : 2.5;
+      if (lightboxState.zoom <= 1) { lightboxState.x = 0; lightboxState.y = 0; }
+      lightboxApply();
+    });
+    img.addEventListener("pointerdown", (ev) => {
+      lightboxState.dragging = true;
+      lightboxState.lastX = ev.clientX;
+      lightboxState.lastY = ev.clientY;
+      img.setPointerCapture(ev.pointerId);
+    });
+    img.addEventListener("pointermove", (ev) => {
+      if (!lightboxState.dragging) return;
+      lightboxState.x += ev.clientX - lightboxState.lastX;
+      lightboxState.y += ev.clientY - lightboxState.lastY;
+      lightboxState.lastX = ev.clientX;
+      lightboxState.lastY = ev.clientY;
+      lightboxApply();
+    });
+    img.addEventListener("pointerup", () => { lightboxState.dragging = false; });
+    img.addEventListener("pointercancel", () => { lightboxState.dragging = false; });
+    // 滚轮缩放
+    lightbox.addEventListener("wheel", (ev) => {
+      ev.preventDefault();
+      lightboxZoom(ev.deltaY < 0 ? 1.15 : 1 / 1.15);
+    }, { passive: false });
+    // 只有点在图片与按钮之外才关掉，点图片不关
+    lightbox.addEventListener("click", (ev) => {
+      if (ev.target === lightbox) lightbox.classList.remove("open");
+    });
+    document.body.append(lightbox);
+    return lightbox;
+  }
+  function showLightbox(items, index) {
+    buildLightbox();
+    lightboxState.items = Array.isArray(items) ? items : [];
+    const thumbs = lightbox.querySelector(".lightbox-thumbs");
+    thumbs.replaceChildren();
+    lightboxState.items.forEach((item, i) => {
+      const thumb = el("button", "lightbox-thumb");
+      thumb.type = "button";
+      thumb.title = item.alt || "";
+      const t = el("img", "");
+      t.src = item.src;
+      t.alt = item.alt || "";
+      thumb.append(t);
+      thumb.addEventListener("click", (ev) => { ev.stopPropagation(); lightboxShow(i); });
+      thumbs.append(thumb);
+    });
     lightbox.classList.add("open");
+    lightboxShow(index || 0);
   }
   async function openHistory(id) {
     const viewer = $("historyViewer");
@@ -938,43 +1039,59 @@
       viewer.append(head);
       viewer.append(el("small", "muted", historyMetaLine(entry)));
       if (entry.prompt) viewer.append(el("pre", "history-prompt", entry.prompt));
-      // 编辑图：原始参考图与蒙版（缩略图排一排，点开看大图）
+      // 这一条记录里的所有图：参考图在前、结果图在后，预览窗的缩略图条按这个顺序
       const inputs = Array.isArray(entry.inputs) ? entry.inputs : [];
+      const items = [];
+      for (const input of inputs) {
+        if (!input.b64) continue;
+        items.push({
+          src: "data:" + (input.mimeType || "image/png") + ";base64," + input.b64,
+          alt: input.role === "mask" ? "蒙版" : (input.filename || "参考图"),
+        });
+      }
+      const resultStart = items.length;
+      for (const image of entry.images || []) {
+        if (!image.b64) continue;
+        items.push({
+          src: "data:" + (image.mimeType || "image/png") + ";base64," + image.b64,
+          alt: entry.prompt || "生成的图片",
+        });
+      }
+      // 编辑图：原始参考图与蒙版（缩略图排一排，点开看大图）
       if (inputs.length) {
         viewer.append(el("div", "history-label", "原始参考图" +
           (inputs.some((i) => i.role === "mask") ? "与蒙版" : "")));
         const strip = el("div", "history-inputs");
-        for (const input of inputs) {
-          if (!input.b64) continue;
+        inputs.forEach((input, i) => {
+          if (!input.b64) return;
           const label = input.role === "mask" ? "蒙版" : (input.filename || "参考图");
           const thumb = el("button", "history-thumb");
           thumb.type = "button";
           thumb.title = label;
           const img = el("img", "");
-          img.src = "data:" + (input.mimeType || "image/png") + ";base64," + input.b64;
+          img.src = items[i].src;
           img.alt = label;
           thumb.append(img);
           if (input.role === "mask") thumb.append(el("span", "history-thumb-label", "蒙版"));
-          thumb.addEventListener("click", () => showLightbox(img.src, label));
+          thumb.addEventListener("click", () => showLightbox(items, i));
           strip.append(thumb);
-        }
+        });
         viewer.append(strip);
       }
       viewer.append(el("div", "history-label", "生成结果"));
       const results = el("div", "history-results");
-      for (const image of entry.images || []) {
-        if (!image.b64) continue;
-        const src = "data:" + (image.mimeType || "image/png") + ";base64," + image.b64;
+      (entry.images || []).forEach((image, i) => {
+        if (!image.b64) return;
         const cell = el("button", "history-result");
         cell.type = "button";
         cell.title = "点开看大图";
         const img = el("img", "");
-        img.src = src;
+        img.src = items[resultStart + i].src;
         img.alt = entry.prompt || "生成的图片";
         cell.append(img);
-        cell.addEventListener("click", () => showLightbox(src, img.alt));
+        cell.addEventListener("click", () => showLightbox(items, resultStart + i));
         results.append(cell);
-      }
+      });
       viewer.append(results);
       // 完整请求报文：可复制，报文里的输入图是文件引用
       if (entry.request) {
@@ -1141,12 +1258,17 @@
       openHistoryDrawer();
     }
     document.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Escape") return;
       if (lightbox?.classList.contains("open")) {
-        lightbox.classList.remove("open");
+        if (ev.key === "ArrowLeft") { ev.preventDefault(); lightboxShow(lightboxState.index - 1); }
+        else if (ev.key === "ArrowRight") { ev.preventDefault(); lightboxShow(lightboxState.index + 1); }
+        else if (ev.key === "Escape") { lightbox.classList.remove("open"); }
+        else if (ev.key === "+" || ev.key === "=") { ev.preventDefault(); lightboxZoom(1.25); }
+        else if (ev.key === "-") { ev.preventDefault(); lightboxZoom(1 / 1.25); }
         return;
       }
-      if ($("historyDrawer")?.classList.contains("open")) closeHistoryDrawer();
+      if (ev.key === "Escape" && $("historyDrawer")?.classList.contains("open")) {
+        closeHistoryDrawer();
+      }
     });
     window.addEventListener("focus", () => { loadPendingDraft(); });
     document.addEventListener("visibilitychange", () => {
