@@ -723,6 +723,9 @@
     $("historyDrawer").setAttribute("aria-hidden", "false");
     $("historyBackdrop").classList.remove("hidden");
     loadHistory();
+    // 深链：?id=… 直接打开某一条的详情
+    const id = new URL(location.href).searchParams.get("id");
+    if (id) openHistory(id);
   }
   function closeHistoryDrawer() {
     $("historyDrawer").classList.remove("open");
