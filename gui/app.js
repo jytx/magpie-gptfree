@@ -882,6 +882,21 @@
       list.append(item);
     }
   }
+  // 大图预览：点缩略图或结果图都能弹出来看
+  let lightbox = null;
+  function showLightbox(src, alt) {
+    if (!lightbox) {
+      lightbox = el("div", "lightbox");
+      lightbox.addEventListener("click", () => lightbox.classList.remove("open"));
+      document.body.append(lightbox);
+    }
+    lightbox.replaceChildren();
+    const img = el("img", "lightbox-image");
+    img.src = src;
+    img.alt = alt || "";
+    lightbox.append(img);
+    lightbox.classList.add("open");
+  }
   async function openHistory(id) {
     const viewer = $("historyViewer");
     try {
@@ -920,25 +935,36 @@
       viewer.append(head);
       viewer.append(el("small", "muted", historyMetaLine(entry)));
       if (entry.prompt) viewer.append(el("pre", "history-prompt", entry.prompt));
-      // 编辑图：原始输入图与蒙版
+      // 编辑图：原始参考图与蒙版（缩略图排一排，点开看大图）
       const inputs = Array.isArray(entry.inputs) ? entry.inputs : [];
       if (inputs.length) {
-        viewer.append(el("div", "history-label", "原始输入图" +
+        viewer.append(el("div", "history-label", "原始参考图" +
           (inputs.some((i) => i.role === "mask") ? "与蒙版" : "")));
+        const strip = el("div", "history-inputs");
         for (const input of inputs) {
           if (!input.b64) continue;
-          const img = el("img", "history-image");
+          const label = input.role === "mask" ? "蒙版" : (input.filename || "参考图");
+          const thumb = el("button", "history-thumb");
+          thumb.type = "button";
+          thumb.title = label;
+          const img = el("img", "");
           img.src = "data:" + (input.mimeType || "image/png") + ";base64," + input.b64;
-          img.alt = input.role === "mask" ? "蒙版" : "原始输入图";
-          viewer.append(img);
+          img.alt = label;
+          thumb.append(img);
+          if (input.role === "mask") thumb.append(el("span", "history-thumb-label", "蒙版"));
+          thumb.addEventListener("click", () => showLightbox(img.src, label));
+          strip.append(thumb);
         }
+        viewer.append(strip);
       }
       viewer.append(el("div", "history-label", "生成结果"));
       for (const image of entry.images || []) {
         if (!image.b64) continue;
+        const src = "data:" + (image.mimeType || "image/png") + ";base64," + image.b64;
         const img = el("img", "history-image");
-        img.src = "data:" + (image.mimeType || "image/png") + ";base64," + image.b64;
+        img.src = src;
         img.alt = entry.prompt || "生成的图片";
+        img.addEventListener("click", () => showLightbox(src, img.alt));
         viewer.append(img);
       }
       // 完整请求报文：可复制，报文里的输入图是文件引用
@@ -1106,9 +1132,12 @@
       openHistoryDrawer();
     }
     document.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape" && $("historyDrawer")?.classList.contains("open")) {
-        closeHistoryDrawer();
+      if (ev.key !== "Escape") return;
+      if (lightbox?.classList.contains("open")) {
+        lightbox.classList.remove("open");
+        return;
       }
+      if ($("historyDrawer")?.classList.contains("open")) closeHistoryDrawer();
     });
     window.addEventListener("focus", () => { loadPendingDraft(); });
     document.addEventListener("visibilitychange", () => {
