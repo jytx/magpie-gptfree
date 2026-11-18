@@ -109,7 +109,9 @@ export const GPTFreePoolPlugin = async (ctx = {}) => {
         return {
           baseURL: CODEX_BASE,
           apiKey: POOL_MARKER,
-          fetch: (input, init) => poolFetch(input, init, { preferredSlot }),
+          // 经 Magpie 网关来的请求里没有客户端的头（宿主不把客户端的
+          // User-Agent 转发给账号型 provider），只能记成 magpie
+          fetch: (input, init) => poolFetch(input, init, { preferredSlot, source: "magpie" }),
         };
       },
     },

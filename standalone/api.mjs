@@ -7,6 +7,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { CODEX_BASE } from "../lib/codex-pool.mjs";
 import { buildImageModelCatalog } from "../lib/chatgpt-web-image.mjs";
+import { createHistoryStore, sourceFromHeaders } from "../lib/history.mjs";
 import { buildWebTextModelCatalog } from "../lib/chatgpt-web-text.mjs";
 import {
   createSseConverter, toChatChunk, toChatChunkFromEvent, toChatCompletion,
@@ -137,6 +138,7 @@ function chatMeta(model) {
 export function createApiHandler(options) {
   const apiKey = String(options?.apiKey || "");
   const fetchPool = options?.fetchPool;
+  const history = options?.history || createHistoryStore();
 
   /**
    * 把请求交给号池，并把上游路径按端点对上。
@@ -152,6 +154,8 @@ export function createApiHandler(options) {
       body,
       headers: { "content-type": String(req.headers["content-type"] || "application/json") },
       signal: req.abortSignal,
+      // 这个服务自己收 HTTP 请求，所以知道是哪个客户端发来的
+      source: sourceFromHeaders(req.headers),
     });
     await pipeUpstream(res, upstream);
   };
@@ -172,6 +176,7 @@ export function createApiHandler(options) {
       body: JSON.stringify(toResponsesRequest(parsed)),
       headers: { "content-type": "application/json" },
       signal: req.abortSignal,
+      source: sourceFromHeaders(req.headers),
     });
     if (!upstream.ok) { await pipeUpstream(res, upstream); return; }
 
@@ -228,6 +233,21 @@ export function createApiHandler(options) {
     if (route === "GET /v1/models") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(buildModelList()));
+      return;
+    }
+    if (route === "GET /v1/history") {
+      const entries = await history.list({ limit: 200 });
+      const totals = await history.stats();
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ object: "list", entries, count: totals.count, bytes: totals.bytes }));
+      return;
+    }
+    if (req.method === "GET" && url.pathname.startsWith("/v1/history/")) {
+      const id = url.pathname.slice("/v1/history/".length);
+      const entry = await history.get(id);
+      if (!entry) { sendError(res, 404, "没有这条历史"); return; }
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ entry }));
       return;
     }
     if (route === "POST /v1/responses") {

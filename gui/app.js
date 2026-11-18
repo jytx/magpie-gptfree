@@ -715,6 +715,150 @@
     }
   }
 
+  // ---- 生成历史 ----
+  const historyEntries = [];
+
+  function historyDuration(ms) {
+    const n = Number(ms) || 0;
+    if (!n) return "";
+    return n >= 1000 ? (n / 1000).toFixed(1) + " 秒" : n + " 毫秒";
+  }
+  function historyBytes(bytes) {
+    const n = Number(bytes) || 0;
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+    return (n / 1024 / 1024).toFixed(1) + " MB";
+  }
+  function historyMetaLine(entry) {
+    return [
+      formatTime(entry.at, ""),
+      entry.account ? "账号 " + entry.account : "",
+      entry.source ? "来源 " + entry.source : "",
+      entry.size || "",
+      historyDuration(entry.durationMs),
+      entry.images && entry.images.length ? entry.images.length + " 张图" : "",
+    ].filter(Boolean).join(" · ");
+  }
+  async function loadHistory() {
+    try {
+      const data = await api("history");
+      historyEntries.length = 0;
+      historyEntries.push(...(data.entries || []));
+      $("historyCount").textContent = String(data.count ?? historyEntries.length);
+      $("historyMeta").textContent = historyEntries.length
+        ? `${data.count} 条 · 图片共 ${historyBytes(data.bytes)}`
+        : "还没有生图记录";
+      renderHistory();
+    } catch (err) {
+      $("historyMeta").textContent = "无法读取生成历史：" + err.message;
+    }
+  }
+  function renderHistory() {
+    const list = $("historyList");
+    list.replaceChildren();
+    if (!historyEntries.length) {
+      list.append(el("div", "empty", "还没有生图记录。用号池生成一张图后，这里会记下提示词与图片。"));
+      return;
+    }
+    for (const entry of historyEntries) {
+      const item = el("div", "account-row");
+      const left = el("div", "account-main");
+      const head = el("div", "account-head");
+      head.append(el("strong", "", entry.model || "未知模型"));
+      if (entry.outputFormat) head.append(el("span", "pill", entry.outputFormat));
+      left.append(head);
+      left.append(el("div", "history-prompt-line", entry.prompt || "（无提示词）"));
+      left.append(el("small", "", historyMetaLine(entry)));
+      item.append(left);
+      const side = el("div", "account-side");
+      const controls = el("div", "account-buttons");
+      const view = el("button", "btn secondary small", "查看");
+      view.type = "button";
+      view.addEventListener("click", () => openHistory(entry.id));
+      const remove = el("button", "btn secondary small", "删除");
+      remove.type = "button";
+      let confirming = false;
+      remove.addEventListener("click", async () => {
+        if (!confirming) {
+          confirming = true;
+          remove.textContent = "再点一次确认删除";
+          setTimeout(() => { confirming = false; remove.textContent = "删除"; }, 3000);
+          return;
+        }
+        try {
+          await api("history/delete", { id: entry.id });
+          notice("已删除这条历史");
+          await loadHistory();
+        } catch (err) { notice("删除失败：" + err.message, true); }
+      });
+      controls.append(view, remove);
+      side.append(controls);
+      item.append(side);
+      list.append(item);
+    }
+  }
+  async function openHistory(id) {
+    const viewer = $("historyViewer");
+    try {
+      const data = await api("history/item?id=" + encodeURIComponent(id));
+      const entry = data.entry || {};
+      viewer.replaceChildren();
+      viewer.classList.remove("hidden");
+      const head = el("div", "section-head with-top");
+      head.append(el("h2", "", formatTime(entry.at, "生成于 ")));
+      const actions = el("div", "pool-actions");
+      const copy = el("button", "btn secondary small", "复制提示词");
+      copy.type = "button";
+      copy.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(entry.prompt || "");
+          notice("提示词已复制");
+        } catch { notice("复制失败，请手动选中提示词", true); }
+      });
+      const close = el("button", "btn secondary small", "关闭");
+      close.type = "button";
+      close.addEventListener("click", () => {
+        viewer.classList.add("hidden");
+        viewer.replaceChildren();
+      });
+      actions.append(copy, close);
+      head.append(actions);
+      viewer.append(head);
+      viewer.append(el("small", "muted", historyMetaLine(entry)));
+      if (entry.prompt) viewer.append(el("pre", "history-prompt", entry.prompt));
+      for (const image of entry.images || []) {
+        if (!image.b64) continue;
+        const img = el("img", "history-image");
+        img.src = "data:" + (image.mimeType || "image/png") + ";base64," + image.b64;
+        img.alt = entry.prompt || "生成的图片";
+        viewer.append(img);
+      }
+    } catch (err) {
+      notice("无法打开这条历史：" + err.message, true);
+    }
+  }
+  async function clearHistory() {
+    const button = $("clearHistory");
+    if (button.dataset.confirm !== "1") {
+      button.dataset.confirm = "1";
+      button.textContent = "再点一次确认清空";
+      setTimeout(() => {
+        button.dataset.confirm = "0";
+        button.textContent = "清空全部";
+      }, 3000);
+      return;
+    }
+    button.dataset.confirm = "0";
+    button.textContent = "清空全部";
+    try {
+      await api("history/clear", {});
+      notice("已清空生成历史");
+      $("historyViewer").classList.add("hidden");
+      $("historyViewer").replaceChildren();
+      await loadHistory();
+    } catch (err) { notice("清空失败：" + err.message, true); }
+  }
+
   async function loadStats() {
     try {
       const data = await api("stats");
@@ -743,8 +887,10 @@
     hidden("importPanel", next !== "import");
     hidden("poolPanel", next !== "pool");
     hidden("statsPanel", next !== "stats");
+    hidden("historyPanel", next !== "history");
     if (next === "pool") loadPool();
     if (next === "stats") loadStats();
+    if (next === "history") loadHistory();
   }
   function setup() {
     // Always shown INSIDE Magpie's plugin frame. Choosing a file loads its
@@ -836,6 +982,8 @@
     $("syncProviders")?.addEventListener("click", syncProvidersNow);
     $("refreshStatsQuota")?.addEventListener("click", () => refreshAccounts({ all: true, quotaOnly: true }));
     $("reloadStats")?.addEventListener("click", loadStats);
+    $("reloadHistory")?.addEventListener("click", loadHistory);
+    $("clearHistory")?.addEventListener("click", clearHistory);
     window.addEventListener("focus", () => { loadPendingDraft(); });
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) loadPendingDraft();

@@ -175,6 +175,9 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .stats-empty { text-align: center; color: var(--muted); padding: 26px 12px }
 
 .empty { text-align: center; padding: 40px 24px; color: var(--muted); font-size: 13px }
+.history-prompt-line { margin: 5px 0 3px; font-size: 13px; line-height: 1.5; color: var(--text); overflow-wrap: anywhere }
+.history-prompt { margin: 10px 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--accent-weak); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto }
+.history-image { display: block; max-width: 100%; margin: 10px 0; border: 1px solid var(--line); border-radius: 10px }
 .notice { border: 1px solid var(--line); border-radius: 9px; background: var(--accent-weak); color: var(--text); font-size: 12px; padding: 11px 14px; margin-top: 16px }
 .notice.error { color: var(--bad); background: var(--bad-bg); border-color: var(--bad) }
 footer { text-align: center; margin-top: 18px; color: var(--muted); font-size: 11px }
