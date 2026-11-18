@@ -16,7 +16,10 @@
         <div><div class="brand-title">GPT号池 <span class="light-title">多账号批量导入与管理</span></div>
           <div class="brand-sub">本地加密号池 · 文本框编辑修正 · 每个账号独立同步到 Providers</div></div>
       </div>
-      <span class="secure-pill"><span class="status-dot"></span> 本地运行</span>
+      <div class="header-side">
+        <button id="historyToggle" type="button" class="btn secondary small">生成历史 <span id="historyCount" class="count">—</span></button>
+        <span class="secure-pill"><span class="status-dot"></span> 本地运行</span>
+      </div>
     </header>
     <main>
       <section class="hero">
@@ -28,7 +31,6 @@
         <button type="button" role="tab" class="tab active" aria-selected="true" data-tab="import">批量导入</button>
         <button type="button" role="tab" class="tab" aria-selected="false" data-tab="pool">我的账号池 <span id="poolCount" class="count">—</span></button>
         <button type="button" role="tab" class="tab" aria-selected="false" data-tab="stats">额度统计</button>
-        <button type="button" role="tab" class="tab" aria-selected="false" data-tab="history">生成历史 <span id="historyCount" class="count">—</span></button>
       </div>
       <section id="importPanel" class="panel" role="tabpanel">
         <div class="section-head"><h2><span class="step">01</span> 批量导入账号</h2>
@@ -191,25 +193,25 @@
           </table>
         </div>
       </section>
-
-      <section id="historyPanel" class="panel hidden" role="tabpanel">
-        <div class="section-head">
-          <h2>生成历史</h2>
-          <div class="pool-actions">
-            <button id="reloadHistory" type="button" class="btn secondary small">刷新</button>
-            <button id="clearHistory" type="button" class="btn danger small">清空全部</button>
-          </div>
-        </div>
-        <p class="muted tiny">本机记录的生图任务：提示词、图片、模型、用的哪个账号、从哪发起的，最多保留 500 条。图片只存在本机，删除一条记录会一并删掉它的图片文件。</p>
-        <div class="pool-toolbar">
-          <div id="historyMeta" class="pool-summary">加载中…</div>
-        </div>
-        <div id="historyList" class="pool-list"></div>
-        <div id="historyViewer" class="hidden"></div>
-      </section>
       <div id="notice" class="notice hidden" role="status"></div>
     </main>
     <footer>GPT号池 · 所有凭证仅在本机处理。请遵守上游使用规则与账号授权范围。</footer>
   </div>
+
+  <div id="historyBackdrop" class="drawer-backdrop hidden"></div>
+  <aside id="historyDrawer" class="drawer" aria-hidden="true" aria-label="生成历史">
+    <div class="drawer-head">
+      <strong>生成历史</strong>
+      <div class="pool-actions">
+        <button id="reloadHistory" type="button" class="btn secondary small">刷新</button>
+        <button id="clearHistory" type="button" class="btn danger small">清空全部</button>
+        <button id="closeHistory" type="button" class="btn secondary small">关闭</button>
+      </div>
+    </div>
+    <p class="muted tiny">本机记录的生图任务：提示词、图片、模型、用的哪个账号、从哪发起的，最多保留 500 条。图片只存在本机，删除一条记录会一并删掉它的图片文件。</p>
+    <div id="historyMeta" class="pool-summary">加载中…</div>
+    <div id="historyList" class="pool-list"></div>
+    <div id="historyViewer" class="hidden"></div>
+  </aside>
 </body>
 </html>

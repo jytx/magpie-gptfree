@@ -178,6 +178,13 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .history-prompt-line { margin: 5px 0 3px; font-size: 13px; line-height: 1.5; color: var(--text); overflow-wrap: anywhere }
 .history-prompt { margin: 10px 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--accent-weak); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto }
 .history-image { display: block; max-width: 100%; margin: 10px 0; border: 1px solid var(--line); border-radius: 10px }
+.header-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(12, 20, 34, .42); z-index: 40; border: 0; padding: 0 }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 41; transform: translateX(102%); transition: transform .22s ease; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px 24px; overflow-y: auto; overscroll-behavior: contain }
+.drawer.open { transform: translateX(0) }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; position: sticky; top: -16px; background: var(--card); padding: 4px 0 8px }
+.drawer .pool-list { margin-top: 2px }
+.drawer .pool-summary { margin: 0 }
 .notice { border: 1px solid var(--line); border-radius: 9px; background: var(--accent-weak); color: var(--text); font-size: 12px; padding: 11px 14px; margin-top: 16px }
 .notice.error { color: var(--bad); background: var(--bad-bg); border-color: var(--bad) }
 footer { text-align: center; margin-top: 18px; color: var(--muted); font-size: 11px }
@@ -199,5 +206,5 @@ footer { text-align: center; margin-top: 18px; color: var(--muted); font-size: 1
   .stats-grid { grid-template-columns: 1fr }
 }
 @media (prefers-reduced-motion: reduce) {
-  .dropzone, #progressFill { transition: none }
+  .dropzone, #progressFill, .drawer { transition: none }
 }

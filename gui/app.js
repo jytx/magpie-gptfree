@@ -715,8 +715,20 @@
     }
   }
 
-  // ---- 生成历史 ----
+  // ---- 生成历史（侧滑抽屉） ----
   const historyEntries = [];
+
+  function openHistoryDrawer() {
+    $("historyDrawer").classList.add("open");
+    $("historyDrawer").setAttribute("aria-hidden", "false");
+    $("historyBackdrop").classList.remove("hidden");
+    loadHistory();
+  }
+  function closeHistoryDrawer() {
+    $("historyDrawer").classList.remove("open");
+    $("historyDrawer").setAttribute("aria-hidden", "true");
+    $("historyBackdrop").classList.add("hidden");
+  }
 
   function historyDuration(ms) {
     const n = Number(ms) || 0;
@@ -833,6 +845,8 @@
         img.alt = entry.prompt || "生成的图片";
         viewer.append(img);
       }
+      // 抽屉里看大图：把它滚到看得见的地方
+      viewer.scrollIntoView({ behavior: "smooth", block: "nearest" });
     } catch (err) {
       notice("无法打开这条历史：" + err.message, true);
     }
@@ -887,10 +901,8 @@
     hidden("importPanel", next !== "import");
     hidden("poolPanel", next !== "pool");
     hidden("statsPanel", next !== "stats");
-    hidden("historyPanel", next !== "history");
     if (next === "pool") loadPool();
     if (next === "stats") loadStats();
-    if (next === "history") loadHistory();
   }
   function setup() {
     // Always shown INSIDE Magpie's plugin frame. Choosing a file loads its
@@ -984,6 +996,14 @@
     $("reloadStats")?.addEventListener("click", loadStats);
     $("reloadHistory")?.addEventListener("click", loadHistory);
     $("clearHistory")?.addEventListener("click", clearHistory);
+    $("historyToggle")?.addEventListener("click", openHistoryDrawer);
+    $("closeHistory")?.addEventListener("click", closeHistoryDrawer);
+    $("historyBackdrop")?.addEventListener("click", closeHistoryDrawer);
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && $("historyDrawer")?.classList.contains("open")) {
+        closeHistoryDrawer();
+      }
+    });
     window.addEventListener("focus", () => { loadPendingDraft(); });
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) loadPendingDraft();
