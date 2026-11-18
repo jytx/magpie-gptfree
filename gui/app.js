@@ -1098,6 +1098,10 @@
         viewer.append(el("div", "history-label", "请求报文"));
         viewer.append(el("pre", "history-request", entry.request));
       }
+      // 深链：&lightbox=1 直接把大图预览拉开
+      if (new URL(location.href).searchParams.get("lightbox") === "1" && items.length) {
+        showLightbox(items, 0);
+      }
       // 抽屉里看大图：把它滚到看得见的地方
       viewer.scrollIntoView({ behavior: "smooth", block: "nearest" });
     } catch (err) {
