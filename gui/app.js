@@ -812,6 +812,7 @@
   function historyMetaLine(entry) {
     return [
       formatTime(entry.at, ""),
+      entry.kind === "edit" ? "编辑图" : "生图",
       entry.account ? "账号 " + entry.account : "",
       entry.source ? "来源 " + entry.source : "",
       entry.size || "",
@@ -846,6 +847,7 @@
       const head = el("div", "account-head");
       head.append(el("strong", "", entry.model || "未知模型"));
       if (entry.outputFormat) head.append(el("span", "pill", entry.outputFormat));
+      if (entry.kind === "edit") head.append(el("span", "pill edit", "编辑"));
       left.append(head);
       left.append(el("div", "history-prompt-line", entry.prompt || "（无提示词）"));
       left.append(el("small", "", historyMetaLine(entry)));
@@ -895,23 +897,51 @@
           notice("提示词已复制");
         } catch { notice("复制失败，请手动选中提示词", true); }
       });
+      const copyRequest = el("button", "btn secondary small", "复制请求报文");
+      copyRequest.type = "button";
+      copyRequest.disabled = !entry.request;
+      copyRequest.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(entry.request || "");
+          notice("请求报文已复制");
+        } catch { notice("复制失败，请手动选中报文", true); }
+      });
       const close = el("button", "btn secondary small", "关闭");
       close.type = "button";
       close.addEventListener("click", () => {
         viewer.classList.add("hidden");
         viewer.replaceChildren();
       });
-      actions.append(copy, close);
+      actions.append(copy, copyRequest, close);
       head.append(actions);
       viewer.append(head);
       viewer.append(el("small", "muted", historyMetaLine(entry)));
       if (entry.prompt) viewer.append(el("pre", "history-prompt", entry.prompt));
+      // 编辑图：原始输入图与蒙版
+      const inputs = Array.isArray(entry.inputs) ? entry.inputs : [];
+      if (inputs.length) {
+        viewer.append(el("div", "history-label", "原始输入图" +
+          (inputs.some((i) => i.role === "mask") ? "与蒙版" : "")));
+        for (const input of inputs) {
+          if (!input.b64) continue;
+          const img = el("img", "history-image");
+          img.src = "data:" + (input.mimeType || "image/png") + ";base64," + input.b64;
+          img.alt = input.role === "mask" ? "蒙版" : "原始输入图";
+          viewer.append(img);
+        }
+      }
+      viewer.append(el("div", "history-label", "生成结果"));
       for (const image of entry.images || []) {
         if (!image.b64) continue;
         const img = el("img", "history-image");
         img.src = "data:" + (image.mimeType || "image/png") + ";base64," + image.b64;
         img.alt = entry.prompt || "生成的图片";
         viewer.append(img);
+      }
+      // 完整请求报文：可复制，报文里的输入图是文件引用
+      if (entry.request) {
+        viewer.append(el("div", "history-label", "请求报文"));
+        viewer.append(el("pre", "history-request", entry.request));
       }
       // 抽屉里看大图：把它滚到看得见的地方
       viewer.scrollIntoView({ behavior: "smooth", block: "nearest" });

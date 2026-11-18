@@ -181,6 +181,84 @@ test("图片字段名不是 b64 也取得到（按值认图，不靠键名）", 
   } finally { await temp.close(); }
 });
 
+test("编辑图：原图落盘、报文留文件引用、记为 edit", async () => {
+  const temp = await tempDir();
+  try {
+    const store = createHistoryStore({ dir: temp.dir });
+    const record = await recordImageTask(store, {
+      request: {
+        model: "gpt-image-2.6",
+        prompt: "把猫换成柴犬",
+        size: "1024x1024",
+        quality: "high",
+        background: "auto",
+        output_format: "png",
+        n: 1,
+        images: [{ b64: PNG_BASE64, mime_type: "image/png", filename: "cat.png" }],
+        masks: [],
+      },
+      result: { data: [{ b64: PNG_BASE64, media_type: "image/png" }] },
+      account: "someone@example.com",
+      durationMs: 1234,
+      source: "Apifox",
+    });
+    assert(record);
+    assert.equal(record.kind, "edit");
+    // 原图也落盘了
+    assert.equal(record.inputs.length, 1);
+    assert.equal(record.inputs[0].filename, "cat.png");
+    assert.equal(record.inputs[0].role, "image");
+    const onDisk = await readFile(join(temp.dir, record.inputs[0].file));
+    assert.equal(onDisk.toString("base64"), PNG_BASE64);
+    // 报文是完整的，但输入图换成文件引用，不带 base64
+    const request = JSON.parse(record.request);
+    assert.equal(request.prompt, "把猫换成柴犬");
+    assert.equal(request.quality, "high");
+    assert.equal(request.model, "gpt-image-2.6");
+    assert(request.images[0].file);
+    assert(!record.request.includes(PNG_BASE64));
+    // 取详情时原图也读得回来
+    const got = await store.get(record.id);
+    assert.equal(got.inputs[0].b64, PNG_BASE64);
+    assert.equal(got.kind, "edit");
+  } finally { await temp.close(); }
+});
+
+test("纯生图记为 generate，报文里没有输入图", async () => {
+  const temp = await tempDir();
+  try {
+    const store = createHistoryStore({ dir: temp.dir });
+    const record = await recordImageTask(store, {
+      request: { model: "gpt-image-2.6", prompt: "一只猫头鹰", size: "1024x1024", output_format: "png" },
+      result: { data: [{ b64: PNG_BASE64, media_type: "image/png" }] },
+    });
+    assert.equal(record.kind, "generate");
+    assert.equal(record.inputs.length, 0);
+    const request = JSON.parse(record.request);
+    assert.equal(request.prompt, "一只猫头鹰");
+    assert.equal(request.images, undefined);
+  } finally { await temp.close(); }
+});
+
+test("删一条编辑记录：原图文件也一起没了", async () => {
+  const temp = await tempDir();
+  try {
+    const store = createHistoryStore({ dir: temp.dir });
+    const record = await recordImageTask(store, {
+      request: {
+        model: "gpt-image-2.6", prompt: "改一下",
+        images: [{ b64: PNG_BASE64, mime_type: "image/png", filename: "cat.png" }],
+      },
+      result: { data: [{ b64: PNG_BASE64, media_type: "image/png" }] },
+    });
+    const inputFile = join(temp.dir, record.inputs[0].file);
+    const outputFile = join(temp.dir, record.images[0].file);
+    await store.remove(record.id);
+    await assert.rejects(() => readFile(inputFile));
+    await assert.rejects(() => readFile(outputFile));
+  } finally { await temp.close(); }
+});
+
 test("账号脱敏与图片扩展名", () => {
   assert.equal(maskEmail("someone@example.com"), "so***@example.com");
   assert.equal(maskEmail(""), "");

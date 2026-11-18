@@ -177,6 +177,9 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .empty { text-align: center; padding: 40px 24px; color: var(--muted); font-size: 13px }
 .history-prompt-line { margin: 5px 0 3px; font-size: 13px; line-height: 1.5; color: var(--text); overflow-wrap: anywhere }
 .history-prompt { margin: 10px 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--accent-weak); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto }
+.history-request { margin: 10px 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
+.history-label { margin: 14px 0 2px; font-size: 12px; font-weight: 650; color: var(--muted) }
+.pill.edit { background: var(--warn-bg); color: var(--warn) }
 .history-image { display: block; max-width: 100%; margin: 10px 0; border: 1px solid var(--line); border-radius: 10px }
 .header-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(12, 20, 34, .42); z-index: 40; border: 0; padding: 0 }
