@@ -730,6 +730,75 @@
     $("historyBackdrop").classList.add("hidden");
   }
 
+  // ---- 抽屉宽度：拖左边缘调宽窄，记着上次的宽度 ----
+  const DRAWER_MIN_WIDTH = 320;
+  const DRAWER_MAX_RATIO = 0.95;
+  const DRAWER_WIDTH_KEY = "gptfree-drawer-width";
+
+  function drawerMaxWidth() {
+    return Math.max(DRAWER_MIN_WIDTH, Math.floor(window.innerWidth * DRAWER_MAX_RATIO));
+  }
+  function readDrawerWidth() {
+    try {
+      const n = Number(window.localStorage?.getItem(DRAWER_WIDTH_KEY));
+      return Number.isFinite(n) && n >= DRAWER_MIN_WIDTH ? n : 0;
+    } catch { return 0; }
+  }
+  function saveDrawerWidth(width) {
+    try { window.localStorage?.setItem(DRAWER_WIDTH_KEY, String(width)); } catch {}
+  }
+  function setDrawerWidth(width) {
+    const drawer = $("historyDrawer");
+    const next = Math.min(drawerMaxWidth(), Math.max(DRAWER_MIN_WIDTH, Math.round(width)));
+    drawer.style.width = next + "px";
+    return next;
+  }
+  function setupDrawerResizer() {
+    const drawer = $("historyDrawer");
+    const resizer = $("historyResizer");
+    if (!drawer || !resizer) return;
+    const stored = readDrawerWidth();
+    if (stored) setDrawerWidth(stored);
+    let startX = 0;
+    let startWidth = 0;
+    let dragging = false;
+    resizer.addEventListener("pointerdown", (ev) => {
+      dragging = true;
+      startX = ev.clientX;
+      startWidth = drawer.getBoundingClientRect().width;
+      drawer.classList.add("dragging");
+      try { resizer.setPointerCapture(ev.pointerId); } catch {}
+      ev.preventDefault();
+    });
+    resizer.addEventListener("pointermove", (ev) => {
+      if (!dragging) return;
+      // 往左拖变宽，往右拖变窄
+      setDrawerWidth(startWidth + (startX - ev.clientX));
+    });
+    const finish = (ev) => {
+      if (!dragging) return;
+      dragging = false;
+      drawer.classList.remove("dragging");
+      try { resizer.releasePointerCapture(ev.pointerId); } catch {}
+      saveDrawerWidth(Math.round(drawer.getBoundingClientRect().width));
+    };
+    resizer.addEventListener("pointerup", finish);
+    resizer.addEventListener("pointercancel", finish);
+    resizer.addEventListener("keydown", (ev) => {
+      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      ev.preventDefault();
+      const current = drawer.getBoundingClientRect().width;
+      const next = setDrawerWidth(current + (ev.key === "ArrowLeft" ? 24 : -24));
+      saveDrawerWidth(next);
+    });
+    // 窗口窄了，之前定的宽度可能超出去
+    window.addEventListener("resize", () => {
+      if (!drawer.style.width) return;
+      const max = drawerMaxWidth();
+      if (drawer.getBoundingClientRect().width > max) setDrawerWidth(max);
+    });
+  }
+
   function historyDuration(ms) {
     const n = Number(ms) || 0;
     if (!n) return "";
@@ -999,6 +1068,11 @@
     $("historyToggle")?.addEventListener("click", openHistoryDrawer);
     $("closeHistory")?.addEventListener("click", closeHistoryDrawer);
     $("historyBackdrop")?.addEventListener("click", closeHistoryDrawer);
+    setupDrawerResizer();
+    // 深链：?drawer=history 直接把抽屉拉开
+    if (new URL(location.href).searchParams.get("drawer") === "history") {
+      openHistoryDrawer();
+    }
     document.addEventListener("keydown", (ev) => {
       if (ev.key === "Escape" && $("historyDrawer")?.classList.contains("open")) {
         closeHistoryDrawer();

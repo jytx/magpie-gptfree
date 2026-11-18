@@ -180,8 +180,15 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .history-image { display: block; max-width: 100%; margin: 10px 0; border: 1px solid var(--line); border-radius: 10px }
 .header-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(12, 20, 34, .42); z-index: 40; border: 0; padding: 0 }
-.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 41; transform: translateX(102%); transition: transform .22s ease; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px 24px; overflow-y: auto; overscroll-behavior: contain }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 41; transform: translateX(102%); transition: transform .22s ease; display: flex; flex-direction: column; padding: 16px 18px 24px; overflow: hidden }
 .drawer.open { transform: translateX(0) }
+.drawer-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; padding-left: 6px }
+.drawer-resizer { position: absolute; top: 0; bottom: 0; left: 0; width: 8px; cursor: ew-resize; touch-action: none; z-index: 2 }
+.drawer-resizer::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: var(--accent); opacity: 0; transition: opacity .15s }
+.drawer-resizer:hover::after, .drawer-resizer:focus-visible::after { opacity: .8 }
+.drawer-resizer:focus-visible { outline: none }
+.drawer.dragging { transition: none }
+.drawer.dragging, .drawer.dragging * { user-select: none }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; position: sticky; top: -16px; background: var(--card); padding: 4px 0 8px }
 .drawer .pool-list { margin-top: 2px }
 .drawer .pool-summary { margin: 0 }

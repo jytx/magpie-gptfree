@@ -200,18 +200,21 @@
 
   <div id="historyBackdrop" class="drawer-backdrop hidden"></div>
   <aside id="historyDrawer" class="drawer" aria-hidden="true" aria-label="生成历史">
-    <div class="drawer-head">
-      <strong>生成历史</strong>
-      <div class="pool-actions">
-        <button id="reloadHistory" type="button" class="btn secondary small">刷新</button>
-        <button id="clearHistory" type="button" class="btn danger small">清空全部</button>
-        <button id="closeHistory" type="button" class="btn secondary small">关闭</button>
+    <div id="historyResizer" class="drawer-resizer" role="separator" aria-orientation="vertical" aria-label="调整抽屉宽度" tabindex="0"></div>
+    <div class="drawer-body">
+      <div class="drawer-head">
+        <strong>生成历史</strong>
+        <div class="pool-actions">
+          <button id="reloadHistory" type="button" class="btn secondary small">刷新</button>
+          <button id="clearHistory" type="button" class="btn danger small">清空全部</button>
+          <button id="closeHistory" type="button" class="btn secondary small">关闭</button>
+        </div>
       </div>
+      <p class="muted tiny">本机记录的生图任务：提示词、图片、模型、用的哪个账号、从哪发起的，最多保留 500 条。图片只存在本机，删除一条记录会一并删掉它的图片文件。</p>
+      <div id="historyMeta" class="pool-summary">加载中…</div>
+      <div id="historyList" class="pool-list"></div>
+      <div id="historyViewer" class="hidden"></div>
     </div>
-    <p class="muted tiny">本机记录的生图任务：提示词、图片、模型、用的哪个账号、从哪发起的，最多保留 500 条。图片只存在本机，删除一条记录会一并删掉它的图片文件。</p>
-    <div id="historyMeta" class="pool-summary">加载中…</div>
-    <div id="historyList" class="pool-list"></div>
-    <div id="historyViewer" class="hidden"></div>
   </aside>
 </body>
 </html>
