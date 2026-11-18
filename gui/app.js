@@ -904,15 +904,15 @@
     if (lightboxState.frame) return;
     lightboxState.frame = requestAnimationFrame(() => {
       lightboxState.frame = 0;
-      const img = lightbox?.querySelector(".lightbox-image");
-      if (!img) return;
-      img.style.transform = `translate3d(${lightboxState.x}px, ${lightboxState.y}px, 0) scale(${lightboxState.zoom})`;
+      const frame = lightbox?.querySelector(".lightbox-frame");
+      if (!frame) return;
+      frame.style.transform = `translate3d(${lightboxState.x}px, ${lightboxState.y}px, 0) scale(${lightboxState.zoom})`;
     });
   }
   function lightboxApply() {
-    const img = lightbox.querySelector(".lightbox-image");
-    if (!img) return;
-    img.style.transform = `translate3d(${lightboxState.x}px, ${lightboxState.y}px, 0) scale(${lightboxState.zoom})`;
+    const frame = lightbox.querySelector(".lightbox-frame");
+    if (!frame) return;
+    frame.style.transform = `translate3d(${lightboxState.x}px, ${lightboxState.y}px, 0) scale(${lightboxState.zoom})`;
     const thumbs = lightbox.querySelectorAll(".lightbox-thumb");
     thumbs.forEach((thumb, i) => thumb.classList.toggle("active", i === lightboxState.index));
     const active = lightbox.querySelector(".lightbox-thumb.active");
@@ -926,7 +926,8 @@
     lightboxState.x = 0;
     lightboxState.y = 0;
     const item = items[lightboxState.index];
-    const img = lightbox.querySelector(".lightbox-image");
+    const frame = lightbox.querySelector(".lightbox-frame");
+    const img = frame.querySelector(".lightbox-image");
     // 换图时不留空白：新的图解码好了再换上，旧的先顶着
     const next = new Image();
     next.src = item.src;
@@ -946,8 +947,11 @@
   function buildLightbox() {
     if (lightbox) return lightbox;
     lightbox = el("div", "lightbox");
+    // 圆角与阴影放在外框上：图片本身干净，缩放拖动时不会反复重绘它
+    const frame = el("div", "lightbox-frame");
     const img = el("img", "lightbox-image");
     img.draggable = false;
+    frame.append(img);
     const bar = el("div", "lightbox-bar");
     const prev = el("button", "lightbox-nav", "‹");
     prev.type = "button";
@@ -964,7 +968,7 @@
     zoomIn.type = "button";
     zoomIn.title = "放大";
     bar.append(prev, thumbs, next, counter, zoomOut, zoomIn);
-    lightbox.append(img, bar);
+    lightbox.append(frame, bar);
 
     prev.addEventListener("click", (ev) => { ev.stopPropagation(); lightboxShow(lightboxState.index - 1); });
     next.addEventListener("click", (ev) => { ev.stopPropagation(); lightboxShow(lightboxState.index + 1); });
@@ -977,6 +981,7 @@
       lightboxApply();
     });
     img.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
       lightboxState.dragging = true;
       lightboxState.lastX = ev.clientX;
       lightboxState.lastY = ev.clientY;
@@ -994,10 +999,15 @@
     });
     img.addEventListener("pointerup", () => { lightboxState.dragging = false; });
     img.addEventListener("pointercancel", () => { lightboxState.dragging = false; });
-    // 滚轮缩放：倍率跟着滚动的量连续变化，不是一格一格跳
+    // 滚轮缩放。触控板的 deltaY 很小（一次滑动才几），纯指数算下来几乎
+    // 不动；给它一个下限，一步至少 4%，才跟手。
     lightbox.addEventListener("wheel", (ev) => {
       ev.preventDefault();
-      lightboxZoom(Math.pow(1.0016, -ev.deltaY));
+      const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? 100 : 1;
+      const delta = ev.deltaY * unit;
+      const raw = Math.pow(1.25, -delta / 100);
+      const factor = raw > 1 ? Math.max(raw, 1.04) : Math.min(raw, 1 / 1.04);
+      lightboxZoom(factor);
     }, { passive: false });
     // 只有点在图片与按钮之外才关掉，点图片不关
     lightbox.addEventListener("click", (ev) => {
