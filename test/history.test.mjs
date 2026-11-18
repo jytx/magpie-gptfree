@@ -160,6 +160,27 @@ test("没有图片的结果不记进历史", async () => {
   } finally { await temp.close(); }
 });
 
+test("图片字段名不是 b64 也取得到（按值认图，不靠键名）", async () => {
+  const temp = await tempDir();
+  try {
+    const store = createHistoryStore({ dir: temp.dir });
+    const record = await recordImageTask(store, {
+      request: { model: "gpt-image-2.6", prompt: "一只猫头鹰" },
+      result: {
+        data: [{
+          // 上游把这个字段叫什么由它自己定，这里换个名字也该照样取到
+          image_blob_xyz: PNG_BASE64,
+          media_type: "image/png",
+          revised_prompt: "一只棕色猫头鹰",
+        }],
+      },
+    });
+    assert(record);
+    assert.equal(record.images.length, 1);
+    assert.equal(record.images[0].mimeType, "image/png");
+  } finally { await temp.close(); }
+});
+
 test("账号脱敏与图片扩展名", () => {
   assert.equal(maskEmail("someone@example.com"), "so***@example.com");
   assert.equal(maskEmail(""), "");
