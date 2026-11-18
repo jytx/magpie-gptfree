@@ -733,19 +733,9 @@
   // ---- 抽屉宽度：拖左边缘调宽窄，记着上次的宽度 ----
   const DRAWER_MIN_WIDTH = 320;
   const DRAWER_MAX_RATIO = 0.95;
-  const DRAWER_WIDTH_KEY = "gptfree-drawer-width";
 
   function drawerMaxWidth() {
     return Math.max(DRAWER_MIN_WIDTH, Math.floor(window.innerWidth * DRAWER_MAX_RATIO));
-  }
-  function readDrawerWidth() {
-    try {
-      const n = Number(window.localStorage?.getItem(DRAWER_WIDTH_KEY));
-      return Number.isFinite(n) && n >= DRAWER_MIN_WIDTH ? n : 0;
-    } catch { return 0; }
-  }
-  function saveDrawerWidth(width) {
-    try { window.localStorage?.setItem(DRAWER_WIDTH_KEY, String(width)); } catch {}
   }
   function setDrawerWidth(width) {
     const drawer = $("historyDrawer");
@@ -753,12 +743,21 @@
     drawer.style.width = next + "px";
     return next;
   }
+  // 宽度记在本地服务那边（页面的浏览器存储不放东西）
+  async function loadDrawerWidth() {
+    try {
+      const data = await api("drawer-width");
+      if (data.width) setDrawerWidth(data.width);
+    } catch {}
+  }
+  function saveDrawerWidth(width) {
+    api("drawer-width", { width }).catch(() => {});
+  }
   function setupDrawerResizer() {
     const drawer = $("historyDrawer");
     const resizer = $("historyResizer");
     if (!drawer || !resizer) return;
-    const stored = readDrawerWidth();
-    if (stored) setDrawerWidth(stored);
+    loadDrawerWidth();
     let startX = 0;
     let startWidth = 0;
     let dragging = false;
