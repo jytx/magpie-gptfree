@@ -192,9 +192,14 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .pill.edit { background: var(--warn-bg); color: var(--warn) }
 .header-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(12, 20, 34, .42); z-index: 40; border: 0; padding: 0 }
+/* 抽屉开着的时候，下面的页面不许滚 */
+body.drawer-open { overflow: hidden }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 41; transform: translateX(102%); transition: transform .22s ease; display: flex; flex-direction: column; padding: 16px 18px 24px; overflow: hidden }
 .drawer.open { transform: translateX(0) }
 .drawer-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; padding-left: 6px }
+/* 里面的块不许被压扁：压扁了列表就被裁掉（.pool-list 自带 overflow:hidden），
+   滚动条也不会出现，滚轮于是落到下面的页面上 */
+.drawer-body > * { flex: 0 0 auto }
 .drawer-resizer { position: absolute; top: 0; bottom: 0; left: 0; width: 8px; cursor: ew-resize; touch-action: none; z-index: 2 }
 .drawer-resizer::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: var(--accent); opacity: 0; transition: opacity .15s }
 .drawer-resizer:hover::after, .drawer-resizer:focus-visible::after { opacity: .8 }

@@ -722,6 +722,8 @@
     $("historyDrawer").classList.add("open");
     $("historyDrawer").setAttribute("aria-hidden", "false");
     $("historyBackdrop").classList.remove("hidden");
+    // 抽屉开着的时候，下面的页面不许跟着滚
+    document.body.classList.add("drawer-open");
     loadHistory();
     // 深链：?id=… 直接打开某一条的详情
     const id = new URL(location.href).searchParams.get("id");
@@ -731,6 +733,7 @@
     $("historyDrawer").classList.remove("open");
     $("historyDrawer").setAttribute("aria-hidden", "true");
     $("historyBackdrop").classList.add("hidden");
+    document.body.classList.remove("drawer-open");
   }
 
   // ---- 抽屉宽度：拖左边缘调宽窄，记着上次的宽度 ----
