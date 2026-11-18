@@ -154,6 +154,7 @@ export function createApiHandler(options) {
       body,
       headers: { "content-type": String(req.headers["content-type"] || "application/json") },
       signal: req.abortSignal,
+    }, {
       // 这个服务自己收 HTTP 请求，所以知道是哪个客户端发来的
       source: sourceFromHeaders(req.headers),
     });
@@ -176,6 +177,7 @@ export function createApiHandler(options) {
       body: JSON.stringify(toResponsesRequest(parsed)),
       headers: { "content-type": "application/json" },
       signal: req.abortSignal,
+    }, {
       source: sourceFromHeaders(req.headers),
     });
     if (!upstream.ok) { await pipeUpstream(res, upstream); return; }

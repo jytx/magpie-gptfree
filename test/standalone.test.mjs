@@ -195,3 +195,22 @@ test("responses 端点原样透传上游的 Responses 载荷", async () => {
     assert.equal(payload.output[0].content[0].text, "你好");
   });
 });
+
+test("独立服务把请求的 User-Agent 作为来源交给号池", async () => {
+  let seen = null;
+  const pool = async (_url, _init, options) => {
+    seen = options;
+    return new Response(JSON.stringify({ data: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  await withServer(pool, "", async (base) => {
+    await fetch(base + "/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "Apifox/2.6.0" },
+      body: JSON.stringify({ model: "gpt-image-2.6", prompt: "一只猫头鹰" }),
+    });
+  });
+  assert.equal(seen?.source, "Apifox");
+});
