@@ -958,15 +958,21 @@
         viewer.append(strip);
       }
       viewer.append(el("div", "history-label", "生成结果"));
+      const results = el("div", "history-results");
       for (const image of entry.images || []) {
         if (!image.b64) continue;
         const src = "data:" + (image.mimeType || "image/png") + ";base64," + image.b64;
-        const img = el("img", "history-image");
+        const cell = el("button", "history-result");
+        cell.type = "button";
+        cell.title = "点开看大图";
+        const img = el("img", "");
         img.src = src;
         img.alt = entry.prompt || "生成的图片";
-        img.addEventListener("click", () => showLightbox(src, img.alt));
-        viewer.append(img);
+        cell.append(img);
+        cell.addEventListener("click", () => showLightbox(src, img.alt));
+        results.append(cell);
       }
+      viewer.append(results);
       // 完整请求报文：可复制，报文里的输入图是文件引用
       if (entry.request) {
         viewer.append(el("div", "history-label", "请求报文"));
