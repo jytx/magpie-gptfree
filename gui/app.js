@@ -890,11 +890,23 @@
   const LIGHTBOX_MAX_ZOOM = 6;
   const LIGHTBOX_MAX_DRAG = 4000;
   let lightbox = null;
+  let lightboxIdleTimer = 0;
   const lightboxState = {
     items: [], index: 0, zoom: 1, x: 0, y: 0,
     dragging: false, lastX: 0, lastY: 0,
     frame: 0,
   };
+
+  /**
+   * 交互中（缩放或拖动）：先摘掉圆角与阴影，别让它们跟着每一帧重绘；
+   * 停手一会儿再装回去。
+   */
+  function lightboxInteract() {
+    if (!lightbox) return;
+    lightbox.classList.add("interacting");
+    clearTimeout(lightboxIdleTimer);
+    lightboxIdleTimer = setTimeout(() => lightbox.classList.remove("interacting"), 200);
+  }
 
   /**
    * 把缩放与位移写上去。一帧只写一次（滚轮与拖动的连续事件合并），
@@ -942,6 +954,7 @@
     if (next === lightboxState.zoom) return;
     lightboxState.zoom = next;
     if (next <= 1) { lightboxState.x = 0; lightboxState.y = 0; }
+    lightboxInteract();
     lightboxPaint();
   }
   function buildLightbox() {
@@ -989,12 +1002,16 @@
     });
     img.addEventListener("pointermove", (ev) => {
       if (!lightboxState.dragging) return;
+      // 合并事件里取最后一个位置：事件积压时不再落在后面，手感更跟手
+      const events = ev.getCoalescedEvents ? ev.getCoalescedEvents() : null;
+      const at = events && events.length ? events[events.length - 1] : ev;
       lightboxState.x = Math.max(-LIGHTBOX_MAX_DRAG,
-        Math.min(LIGHTBOX_MAX_DRAG, lightboxState.x + ev.clientX - lightboxState.lastX));
+        Math.min(LIGHTBOX_MAX_DRAG, lightboxState.x + at.clientX - lightboxState.lastX));
       lightboxState.y = Math.max(-LIGHTBOX_MAX_DRAG,
-        Math.min(LIGHTBOX_MAX_DRAG, lightboxState.y + ev.clientY - lightboxState.lastY));
-      lightboxState.lastX = ev.clientX;
-      lightboxState.lastY = ev.clientY;
+        Math.min(LIGHTBOX_MAX_DRAG, lightboxState.y + at.clientY - lightboxState.lastY));
+      lightboxState.lastX = at.clientX;
+      lightboxState.lastY = at.clientY;
+      lightboxInteract();
       lightboxPaint();
     });
     img.addEventListener("pointerup", () => { lightboxState.dragging = false; });

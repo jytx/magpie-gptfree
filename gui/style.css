@@ -191,10 +191,12 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .lightbox.open { display: flex }
 /* 缩放与拖动都走 transform：合成层上做，不引起重绘；
    不给 transition —— 每次滚轮都重启过渡会拖出粘滞的尾巴。
-   圆角与阴影在 frame 上，缩放时图片本身不用重绘。 */
-.lightbox-frame { max-width: 96vw; max-height: 74vh; border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); transform-origin: center center; will-change: transform; backface-visibility: hidden; line-height: 0 }
-.lightbox-image { display: block; max-width: 100%; max-height: 74vh; width: auto; height: auto; object-fit: contain; user-select: none; -webkit-user-drag: none; touch-action: none; cursor: grab }
+   外框只有 transform 和尺寸，干净；圆角与阴影在图片上，交互时摘掉，
+   免得它们跟着每一帧重绘（横向拖动时露出的新区域最吃这个）。 */
+.lightbox-frame { max-width: 96vw; max-height: 74vh; transform-origin: center center; will-change: transform; backface-visibility: hidden; line-height: 0 }
+.lightbox-image { display: block; max-width: 100%; max-height: 74vh; width: auto; height: auto; object-fit: contain; border-radius: 10px; box-shadow: var(--shadow); user-select: none; -webkit-user-drag: none; touch-action: none; cursor: grab }
 .lightbox-frame:active .lightbox-image { cursor: grabbing }
+.lightbox.interacting .lightbox-image { border-radius: 0; box-shadow: none }
 .lightbox-bar { display: flex; align-items: center; gap: 10px; margin-top: 14px; max-width: 94vw }
 .lightbox-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px; max-width: 66vw }
 .lightbox-thumb { width: 56px; height: 56px; flex: 0 0 auto; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: transparent; cursor: pointer }
