@@ -836,6 +836,17 @@
         ? `${data.count} 条 · 图片共 ${historyBytes(data.bytes)}`
         : "还没有生图记录";
       renderHistory();
+      // 深链：?id=… 直接把那一条展开
+      const wanted = new URL(location.href).searchParams.get("id");
+      if (wanted) {
+        const item = $("historyList").querySelector(`[data-id="${wanted}"]`);
+        const detail = item?.nextElementSibling;
+        const button = item?.querySelector(".account-buttons .btn");
+        if (item && detail && button) {
+          await toggleHistoryDetail({ id: wanted }, detail, button);
+          item.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
     } catch (err) {
       $("historyMeta").textContent = "无法读取生成历史：" + err.message;
     }
@@ -849,6 +860,7 @@
     }
     for (const entry of historyEntries) {
       const item = el("div", "account-row");
+      item.setAttribute("data-id", entry.id);
       const left = el("div", "account-main");
       const head = el("div", "account-head");
       head.append(el("strong", "", entry.model || "未知模型"));
@@ -862,8 +874,9 @@
       const controls = el("div", "account-buttons");
       const view = el("button", "btn secondary small", "查看");
       view.type = "button";
-      view.addEventListener("click", () => openHistory(entry.id));
-      const remove = el("button", "btn secondary small", "删除");
+      // 详情就展开在它自己这一条的下面，不用滚到别处再滚回来
+      const detail = el("div", "history-detail hidden");
+      view.addEventListener("click", () => toggleHistoryDetail(entry, detail, view));      const remove = el("button", "btn secondary small", "删除");
       remove.type = "button";
       let confirming = false;
       remove.addEventListener("click", async () => {
@@ -882,7 +895,7 @@
       controls.append(view, remove);
       side.append(controls);
       item.append(side);
-      list.append(item);
+      list.append(item, detail);
     }
   }
   // 大图预览：底部缩略图条、左右循环切换、缩放与拖动
@@ -1052,46 +1065,55 @@
     lightbox.classList.add("open");
     lightboxShow(index || 0);
   }
-  async function openHistory(id) {
-    const viewer = $("historyViewer");
+  /**
+   * 展开或收起某一条的详情：详情就在这一条的下面，展开后不用再滚回去。
+   */
+  async function toggleHistoryDetail(entry, container, button) {
+    if (!container.classList.contains("hidden")) {
+      container.classList.add("hidden");
+      container.replaceChildren();
+      button.textContent = "查看";
+      return;
+    }
+    button.textContent = "收起";
+    container.classList.remove("hidden");
+    container.replaceChildren(el("p", "muted", "载入中…"));
+    await openHistory(entry, container);
+  }
+  // 详情渲染到它自己那一条的下面（container），不另开底部区块
+  async function openHistory(entry, container) {
     try {
-      const data = await api("history/item?id=" + encodeURIComponent(id));
-      const entry = data.entry || {};
-      viewer.replaceChildren();
-      viewer.classList.remove("hidden");
+      const data = await api("history/item?id=" + encodeURIComponent(entry.id));
+      const entryData = data.entry || {};
+      container.replaceChildren();
+      container.classList.remove("hidden");
       const head = el("div", "section-head with-top");
-      head.append(el("h2", "", formatTime(entry.at, "生成于 ")));
+      head.append(el("h2", "", formatTime(entryData.at, "生成于 ")));
       const actions = el("div", "pool-actions");
       const copy = el("button", "btn secondary small", "复制提示词");
       copy.type = "button";
       copy.addEventListener("click", async () => {
         try {
-          await navigator.clipboard.writeText(entry.prompt || "");
+          await navigator.clipboard.writeText(entryData.prompt || "");
           notice("提示词已复制");
         } catch { notice("复制失败，请手动选中提示词", true); }
       });
       const copyRequest = el("button", "btn secondary small", "复制请求报文");
       copyRequest.type = "button";
-      copyRequest.disabled = !entry.request;
+      copyRequest.disabled = !entryData.request;
       copyRequest.addEventListener("click", async () => {
         try {
-          await navigator.clipboard.writeText(entry.request || "");
+          await navigator.clipboard.writeText(entryData.request || "");
           notice("请求报文已复制");
         } catch { notice("复制失败，请手动选中报文", true); }
       });
-      const close = el("button", "btn secondary small", "关闭");
-      close.type = "button";
-      close.addEventListener("click", () => {
-        viewer.classList.add("hidden");
-        viewer.replaceChildren();
-      });
-      actions.append(copy, copyRequest, close);
+      actions.append(copy, copyRequest);
       head.append(actions);
-      viewer.append(head);
-      viewer.append(el("small", "muted", historyMetaLine(entry)));
-      if (entry.prompt) viewer.append(el("pre", "history-prompt", entry.prompt));
+      container.append(head);
+      container.append(el("small", "muted", historyMetaLine(entryData)));
+      if (entryData.prompt) container.append(el("pre", "history-prompt", entryData.prompt));
       // 这一条记录里的所有图：参考图在前、结果图在后，预览窗的缩略图条按这个顺序
-      const inputs = Array.isArray(entry.inputs) ? entry.inputs : [];
+      const inputs = Array.isArray(entryData.inputs) ? entryData.inputs : [];
       const items = [];
       for (const input of inputs) {
         if (!input.b64) continue;
@@ -1101,16 +1123,16 @@
         });
       }
       const resultStart = items.length;
-      for (const image of entry.images || []) {
+      for (const image of entryData.images || []) {
         if (!image.b64) continue;
         items.push({
           src: "data:" + (image.mimeType || "image/png") + ";base64," + image.b64,
-          alt: entry.prompt || "生成的图片",
+          alt: entryData.prompt || "生成的图片",
         });
       }
       // 编辑图：原始参考图与蒙版（缩略图排一排，点开看大图）
       if (inputs.length) {
-        viewer.append(el("div", "history-label", "原始参考图" +
+        container.append(el("div", "history-label", "原始参考图" +
           (inputs.some((i) => i.role === "mask") ? "与蒙版" : "")));
         const strip = el("div", "history-inputs");
         inputs.forEach((input, i) => {
@@ -1127,34 +1149,32 @@
           thumb.addEventListener("click", () => showLightbox(items, i));
           strip.append(thumb);
         });
-        viewer.append(strip);
+        container.append(strip);
       }
-      viewer.append(el("div", "history-label", "生成结果"));
+      container.append(el("div", "history-label", "生成结果"));
       const results = el("div", "history-results");
-      (entry.images || []).forEach((image, i) => {
+      (entryData.images || []).forEach((image, i) => {
         if (!image.b64) return;
         const cell = el("button", "history-result");
         cell.type = "button";
         cell.title = "点开看大图";
         const img = el("img", "");
         img.src = items[resultStart + i].src;
-        img.alt = entry.prompt || "生成的图片";
+        img.alt = entryData.prompt || "生成的图片";
         cell.append(img);
         cell.addEventListener("click", () => showLightbox(items, resultStart + i));
         results.append(cell);
       });
-      viewer.append(results);
+      container.append(results);
       // 完整请求报文：可复制，报文里的输入图是文件引用
-      if (entry.request) {
-        viewer.append(el("div", "history-label", "请求报文"));
-        viewer.append(el("pre", "history-request", entry.request));
+      if (entryData.request) {
+        container.append(el("div", "history-label", "请求报文"));
+        container.append(el("pre", "history-request", entryData.request));
       }
       // 深链：&lightbox=1 直接把大图预览拉开
       if (new URL(location.href).searchParams.get("lightbox") === "1" && items.length) {
         showLightbox(items, 0);
       }
-      // 抽屉里看大图：把它滚到看得见的地方
-      viewer.scrollIntoView({ behavior: "smooth", block: "nearest" });
     } catch (err) {
       notice("无法打开这条历史：" + err.message, true);
     }
@@ -1175,8 +1195,6 @@
     try {
       await api("history/clear", {});
       notice("已清空生成历史");
-      $("historyViewer").classList.add("hidden");
-      $("historyViewer").replaceChildren();
       await loadHistory();
     } catch (err) { notice("清空失败：" + err.message, true); }
   }

@@ -179,6 +179,10 @@ td:first-child { font-variant-numeric: tabular-nums; color: var(--muted) }
 .history-prompt { margin: 10px 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--accent-weak); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto }
 .history-request { margin: 10px 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
 .history-label { margin: 14px 0 2px; font-size: 12px; font-weight: 650; color: var(--muted) }
+/* 详情就展开在它自己那一条的下面 */
+.history-detail { padding: 2px 15px 16px; border-bottom: 1px solid var(--line) }
+.history-detail .section-head { padding-top: 8px }
+.history-detail .section-head h2 { font-size: 14px }
 /* 参考图：固定的小方框；结果图：大一些，列数随抽屉宽度自动变 */
 .history-inputs { display: grid; grid-template-columns: repeat(auto-fill, 78px); gap: 10px; justify-content: start; margin: 8px 0 2px }
 .history-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin: 8px 0 2px }
