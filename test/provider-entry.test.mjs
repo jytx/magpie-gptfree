@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { request as httpRequest } from "node:http";
 import { createGuiService } from "../lib/gui-service.mjs";
+import { stopGuiRetryLoop } from "../lib/gui-retry.mjs";
 import { GPTFreePoolPlugin, GPTFreeGuiPlugin } from "../index.mjs";
 import { nativeImportMethod } from "../lib/provider-native-signin.mjs";
 import { pickAccountTxt, NATIVE_PICKER_COMMANDS } from "../lib/native-file-dialog.mjs";
@@ -325,6 +326,9 @@ test("a GUI port already in use does not fail the plugin load", async () => {
   } finally {
     if (before === undefined) delete process.env.MAGPIE_GPTFREE_HOME;
     else process.env.MAGPIE_GPTFREE_HOME = before;
+    // 先停掉加载失败后起的后台保活循环，再释放占用者：
+    // 顺序反了会让循环在端口空出后绑上，留下没人管的服务。
+    stopGuiRetryLoop();
     await busy.close();
     await rm(home, { recursive: true, force: true });
   }

@@ -5,6 +5,7 @@
  */
 import { CODEX_BASE, discoverPoolModels, poolFetch } from "./lib/codex-pool.mjs";
 import { GUI_PORT, startGuiServer } from "./lib/gui-service.mjs";
+import { GUI_KEEPALIVE_INTERVAL_MS, keepGuiServerAlive } from "./lib/gui-retry.mjs";
 import { createPoolConnector, POOL_MARKER, POOL_PROVIDER } from "./lib/pool-connection.mjs";
 import { nativeImportMethod } from "./lib/provider-native-signin.mjs";
 
@@ -59,6 +60,21 @@ export const GPTFreeGuiPlugin = async (ctx, options) => {
     } catch {
       // A log that cannot be written must not stop the plugin from loading.
     }
+    // 交接竞态的兜底：短重试耗尽后，在后台按固定间隔继续尝试绑定。
+    // 旧宿主退干净、端口一空出来，GUI 页面就能自己恢复，不再需要
+    // 重启 magpie。keepGuiServerAlive 自身不抛错，失败静默轮询。
+    keepGuiServerAlive({
+      start: startGuiServer,
+      port,
+      onPoolChange: () => connection.sync(),
+      onUp: () => {
+        ctx?.client?.app?.log?.({
+          body: { service: "gptfree", level: "info",
+            message: "GPT号池 GUI service recovered on 127.0.0.1:" + port },
+        }).catch(() => {});
+      },
+      intervalMs: GUI_KEEPALIVE_INTERVAL_MS,
+    });
   }
   // Restore Magpie's per-account local-pool slots automatically after
   // restarting. A corrupt vault must not make the GUI inaccessible.
