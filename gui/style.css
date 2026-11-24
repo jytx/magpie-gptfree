@@ -46,7 +46,8 @@ button:disabled { opacity: .5; cursor: not-allowed }
 .shell { max-width: 1040px; margin: 0 auto }
 .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--line) }
 .brand { display: flex; align-items: center; gap: 12px }
-.brand-icon { width: 42px; height: 42px; display: inline-grid; place-items: center; border-radius: 14px; background: #2465bb; color: white; font-size: 19px; font-weight: 740; letter-spacing: -.04em }
+.brand-icon { width: 42px; height: 42px; display: inline-grid; place-items: center; border-radius: 14px; background: transparent; overflow: hidden; flex: 0 0 auto }
+.brand-icon svg { width: 100%; height: 100%; display: block }
 .brand-title { font-size: 18px; font-weight: 760; line-height: 1.3; letter-spacing: -.02em }
 .light-title { font-weight: 500 }
 .brand-sub, .muted, .footnote { color: var(--muted) }
