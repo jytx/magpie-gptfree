@@ -831,9 +831,11 @@
       const data = await api("history");
       historyEntries.length = 0;
       historyEntries.push(...(data.entries || []));
-      $("historyCount").textContent = String(data.count ?? historyEntries.length);
+      $("historyCount").textContent = historyEntries.length
+        ? String(data.count ?? historyEntries.length) + " 条"
+        : "";
       $("historyMeta").textContent = historyEntries.length
-        ? `${data.count} 条 · 图片共 ${historyBytes(data.bytes)}`
+        ? `图片共 ${historyBytes(data.bytes)}`
         : "还没有生图记录";
       renderHistory();
       // 深链：?id=… 直接把那一条展开
